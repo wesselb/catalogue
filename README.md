@@ -2,6 +2,9 @@
 Resource management with Alfred
 
 ## Setup
+- `pip install titlecase`
+- `brew install trash fzf`
+- `brew cask install sublime-text`
 - Import `Resource Management.alfredworkflow` into Alfred.
     - Set environment variable `catalogue_path` to path of repository.
 - Configure `config.py`.
