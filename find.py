@@ -1,21 +1,21 @@
-import sys
-import core.alfred
-import subprocess as sp
+from core.alfred import AlfredFormatter
+import argparse
+import core.bin as bin
+from config import config
 
 
-if len(sys.argv) < 2:
-    exit('Insufficient arguments')
+def main(args):
+    query = args.query[0]
+    if args.content:
+        files = bin.mdfind(config['resource_path'], query)
+    else:
+        files = bin.fzf('\n'.join(bin.list(['.pdf'])), query)
+    print AlfredFormatter(files, config['base_path']).list_json()
 
-query_type = sys.argv[1]
-query = ' '.join(sys.argv[2:])
 
-if query_type not in ['name', 'content']:
-    exit('Type must be either \'name\' or \'content\'')
-
-script_path = '/Users/Wessel/Dropbox/Projects/Development/' \
-              'Catalogue/find_{}.sh'.format(query_type)
-
-p = sp.Popen([script_path, query], stdout=sp.PIPE)
-out, _ = p.communicate()
-files = filter(None, out.split('\n'))
-print core.alfred.AlfredFormatter(files, '/Users/Wessel/Dropbox/').list_json()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(prog='find.py')
+    parser.add_argument('--content', help='search content',
+                        action='store_true', default=False)
+    parser.add_argument('query', nargs='+', help='query to search for')
+    main(parser.parse_args())

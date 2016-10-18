@@ -1,18 +1,19 @@
-import subprocess as sp
 import json
+import core.bin as bin
 from core.bib import BibRenderer
+import argparse
 
 
-p = sp.Popen(['/Users/Wessel/Dropbox/Projects/Development/'
-              'Catalogue/list_json.sh'], stdout=sp.PIPE)
-out, _ = p.communicate()
-files = filter(None, out.split('\n'))
+def main(args):
+    entries = []
+    for entry in bin.list(['.json']):
+        with open(entry) as f:
+            entries.extend(json.load(f))
 
-entries = []
-for entry in files:
-    with open(entry) as f:
-        entries.extend(json.load(f))
+    with open('output/bibliography.bib', 'w') as f:
+        f.write(BibRenderer(entries).as_text())
 
-with open('output/bibliography.bib', 'w') as f:
-    f.write(BibRenderer(entries).as_text())
 
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(prog='update_bibliography.py')
+    main(parser.parse_args())

@@ -1,6 +1,6 @@
-import re
 from titlecase import titlecase
 from string import lowercase, uppercase
+from config import names, replacements
 import json
 import textwrap
 
@@ -37,21 +37,43 @@ def remove_ordinal_indicators(value):
     return value.strip()
 
 
-def level_split(value, delimiter=','):
+def top_split(value, delimiter=','):
     """
-    Split a string by a delimiter only at places not enclosed by curly braces.
+    Split a string by a delimiter.
+
+    Specifically, don't split when
+        - the delimiter is inside curly braces,
+        - the delimiter is inside single quotes or
+        - the delimiter is inside double quotes.
+
+    :param value: Value to split
+    :param delimiter: Delimiter
+    :return: Splitted value
     """
-    curly_level = 0
     splitted = ['']
-    for character in value:
-        if character == '{':
-            curly_level -= 1
-        elif character == '}':
-            curly_level += 1
-        elif character == delimiter and curly_level == 0:
-            splitted += ['']
+    curly_level = 0
+    in_double = False
+    in_single = False
+    iterator = iter(value)
+    for character in iterator:
+        if character == '\\' and (in_single or in_double or curly_level > 0):
+            splitted[-1] += character + next(iterator)
         else:
-            splitted[-1] += character
+            if character == '{':
+                curly_level += 1
+            elif character == '}':
+                curly_level -= 1
+            elif character == '\'' and not in_double:
+                in_single = not in_single
+            elif character == '"' and not in_single:
+                in_double = not in_double
+            elif character == delimiter \
+                    and curly_level == 0 \
+                    and not in_double \
+                    and not in_single:
+                splitted += ['']
+            else:
+                splitted[-1] += character
     return splitted
 
 
@@ -69,14 +91,6 @@ class StringFilter:
     Filter a string compliant with BibTeX syntax.
     """
 
-    _names = [
-        'Gaussian',
-        'IEEE',
-        'Copula'
-    ]
-    _replacements = [
-        ('Alvarez', "{\\'A}lvarez")
-    ]
     _allowed_letters = '& :,.0123456789-' + lowercase + uppercase
 
     @staticmethod
@@ -90,18 +104,17 @@ class StringFilter:
         """ Filter a string by only allowing allowed characters. """
         return filter(lambda x: x in StringFilter._allowed_letters, value)
 
-
     @staticmethod
     def _apply_replacements(value):
         """ Apply the defined replacements to a string. """
-        for original, replacement in StringFilter._replacements:
+        for original, replacement in replacements:
             value = value.replace(original, replacement)
         return value
 
     @staticmethod
     def _brace_names(value):
         """ Brace the defined names. """
-        for name in StringFilter._names:
+        for name in names:
             value = value.replace(name, '{' + name + '}')
         return value
 
@@ -124,22 +137,21 @@ class BibParser:
         entry = entry[:-2]
         splitted_entry = purge(entry.split('{', 1))
         parsed_entry['type'] = splitted_entry[0].lower()
-        parsed_entry.update(self._parse_fields(
-            purge(level_split(splitted_entry[1]))))
+        fields = purge(top_split(splitted_entry[1]))
+        parsed_entry.update(self._parse_fields(fields))
         return parsed_entry
 
-    def _enclosing_to_braces(self, value):
+    def _remove_enclosing(self, value):
         value = value.strip()
         if value[0] in ['\'', '"', '{']:
-            return '{' + value[1:-2] + '}'
+            return value[1:-2]
         return value
 
     def _parse_fields(self, fields):
         parsed_entry = {}
         parsed_entry['id'] = fields[0]
         for field in fields[1:]:
-            field = self._enclosing_to_braces(field) \
-                        .replace('{', '').replace('}', '')
+            field = self._remove_enclosing(field)
             splitted_field = field.split('=', 1)
             key = splitted_field[0].strip()
             value = self._parse_value(key, splitted_field[1].strip())
@@ -168,8 +180,6 @@ class BibParser:
         return json.dumps(self._parsed_entries, indent=4, sort_keys=True)
 
 
-
-
 class BibRenderer:
     _template_entry = textwrap.dedent('''
     @{type:s}{{{id:s},
@@ -188,7 +198,8 @@ class BibRenderer:
         entry_type, entry_id = entry['type'], entry['id']
         del entry['type']
         del entry['id']
-        fields = map(lambda (k, v): k + ' = {' + self._value_to_text(k, v) + '}',
+        fields = map(lambda (k, v): ''.join([k, ' = ',  '{',
+                                             self._value_to_text(k, v), '}']),
                      entry.items())
         return self._template_entry.format(type=entry_type,
                                            id=entry_id,
@@ -206,6 +217,3 @@ class BibRenderer:
         else:
             raise ValueError('Key \'{}\' cannot be matched with value \'{}\''
                              .format(key, value))
-
-
-
