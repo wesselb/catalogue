@@ -1,5 +1,6 @@
 config = {
     'resource_path': '/Users/Wessel/Dropbox/Resources',
+    'catalogue_path': '/Users/Wessel/Dropbox/Projects/Development/Catalogue',
     'base_path': '/Users/Wessel/Dropbox',
     'binaries': {'find': '/usr/bin/find',
                  'mdfind': '/usr/bin/mdfind',
