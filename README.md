@@ -9,6 +9,9 @@ Resource management with Alfred
     - Set environment variable `catalogue_path` to path of repository.
 - Configure `config.py`.
 
+## Usage
+Type `r<space>` in Alfred.
+
 ## To-Do
 - Interface using Alfred:
   - Add citation
@@ -16,6 +19,7 @@ Resource management with Alfred
   - Edit citation
 - Rework `BibParser`
 - Allowed fields in parsed Bib file
+- Sphinx documentation
 
 
 ## Issues
