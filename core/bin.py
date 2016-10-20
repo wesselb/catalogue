@@ -1,6 +1,6 @@
 import subprocess as sp
 from config import config
-import os
+import core.utils
 
 
 def find(path, follow_symlinks=True):
@@ -40,7 +40,7 @@ def subl(path):
 
 def list(extensions):
     files = find(config['resource_path'])
-    return filter(lambda x: os.path.splitext(x)[1] in extensions, files)
+    return core.utils.filter_ext(files, extensions)
 
 
 def trash(path):
