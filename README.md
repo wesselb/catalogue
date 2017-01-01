@@ -13,13 +13,6 @@ Resource management with Alfred
 Type `r<space>` in Alfred.
 
 ## To-Do
-- Rework `BibParser`
-    - Allowed fields in parsed Bib file
 - Sphinx documentation
-- Feature: add symlink to current folder
 - Feature: rename pdf's automagically
-- Feature: process all pdf's in a folder
 - Feature: automagically fetch BibTex files
-
-## Issues
-- `mdfind` in doesn't follow symlinks.

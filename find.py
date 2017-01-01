@@ -1,7 +1,7 @@
 from core.alfred import AlfredFormatter
+from config import config
 import argparse
 import core.bin as bin
-from config import config
 import core.utils
 
 
@@ -10,9 +10,9 @@ def main(args):
     if args.json:
         extensions = ['.json']
     else:
-        extensions = ['.pdf']
+        extensions = ['.pdf', '.djvu']
     if args.content:
-        files = bin.mdfind(config['resource_path'], query)
+        files = bin.mdfind2(config['resource_path'], query)
         files = core.utils.filter_ext(files, extensions)
     else:
         files = bin.fzf('\n'.join(bin.list(extensions)), query)

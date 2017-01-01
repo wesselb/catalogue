@@ -1,12 +1,17 @@
 from titlecase import titlecase
 from string import lowercase, uppercase
-from config import names, replacements
+import config
 import json
 import textwrap
+import re
 
 
 def is_numeric(value):
-    """ Check whether a value is numeric, ignoring ordinal indicators. """
+    """
+    Check whether a value is numeric, ignoring ordinal indicators.
+    :param value: value
+    :return: boolean whether value is numeric
+    """
     try:
         to_numeric(value)
         return True
@@ -15,21 +20,31 @@ def is_numeric(value):
 
 
 def to_numeric(value):
-    """ Convert a value to a number, ignoring ordinal indicators. """
-    return int(StringFilter.filter(value))
+    """
+    Convert a value to a number, ignoring ordinal indicators.
+    :param value: value
+    :return: converted value
+    """
+    return int(StringNormaliser.filter(value))
 
 
-def purge(xs):
+def purge_list(xs):
     """
     Purge a list of strings by stripping all elements and removing empty
     elements.
+    :param xs: list
+    :return: purged list
     """
     xs = map(lambda x: x.strip(), xs)
     return filter(None, xs)
 
 
 def remove_ordinal_indicators(value):
-    """ Convert a value to lower case and remove ordinal indicators. """
+    """
+    Convert a value to lower case and remove ordinal indicators.
+    :param value: value
+    :return: converted value
+    """
     indicators = ['th', 'nd', 'rd', 'st']
     value = value.lower()
     for indicator in indicators:
@@ -39,16 +54,11 @@ def remove_ordinal_indicators(value):
 
 def top_split(value, delimiter=','):
     """
-    Split a string by a delimiter.
-
-    Specifically, don't split when
-        - the delimiter is inside curly braces,
-        - the delimiter is inside single quotes or
-        - the delimiter is inside double quotes.
-
-    :param value: Value to split
-    :param delimiter: Delimiter
-    :return: Splitted value
+    Split a string by a delimiter. Don't split when the delimiter is inside
+    curly braces, single quotes, or double quotes.
+    :param value: value to split
+    :param delimiter: delimiter
+    :return: splitted value
     """
     splitted = ['']
     curly_level = 0
@@ -56,9 +66,11 @@ def top_split(value, delimiter=','):
     in_single = False
     iterator = iter(value)
     for character in iterator:
+        # Check for escaping
         if character == '\\' and (in_single or in_double or curly_level > 0):
             splitted[-1] += character + next(iterator)
         else:
+            # Process braces and quotes
             if character == '{':
                 curly_level += 1
             elif character == '}':
@@ -67,7 +79,8 @@ def top_split(value, delimiter=','):
                 in_single = not in_single
             elif character == '"' and not in_single:
                 in_double = not in_double
-            elif character == delimiter \
+            # Process character
+            if character == delimiter \
                     and curly_level == 0 \
                     and not in_double \
                     and not in_single:
@@ -78,6 +91,11 @@ def top_split(value, delimiter=','):
 
 
 def compose(*funs):
+    """
+    Compose functions.
+    :param funs: functions
+    :return: composition of functions
+    """
     def composed_fun(*args, **kw_args):
         value = funs[-1](*args, **kw_args)
         for fun in reversed(funs[0:-1]):
@@ -86,79 +104,117 @@ def compose(*funs):
     return composed_fun
 
 
-class StringFilter:
+class StringNormaliser:
     """
-    Filter a string compliant with BibTeX syntax.
+    Normalise a string.
     """
-
-    _allowed_letters = '& :,.0123456789-' + lowercase + uppercase
 
     @staticmethod
     def filter(value):
-        return compose(StringFilter._brace_names,
-                       StringFilter._apply_replacements,
-                       StringFilter._filter_string)(value)
+        """
+        Normalise a string.
+        :param value: string to normalise
+        :return: normalised string
+        """
+        return compose(StringNormaliser._brace_names,
+                       StringNormaliser._brace_abbrevs,
+                       StringNormaliser._apply_replacements,
+                       StringNormaliser._filter_string)(value)
 
     @staticmethod
     def _filter_string(value):
-        """ Filter a string by only allowing allowed characters. """
-        return filter(lambda x: x in StringFilter._allowed_letters, value)
+        """ Filter a string. """
+        # Remove braces
+        value = filter(lambda x: x != '{' and x != '}', value)
+        # Remove LaTeX commands
+        value = re.sub(r'(\\[a-zA-Z]+|\\[\^~\'"=.`])', '', value)
+        # Convert hard spaces
+        value = value.replace('~', ' ')
+        return value
 
     @staticmethod
     def _apply_replacements(value):
-        """ Apply the defined replacements to a string. """
-        for original, replacement in replacements:
+        """ Apply defined replacements to a string. """
+        for original, replacement in config.replacements:
             value = value.replace(original, replacement)
         return value
 
     @staticmethod
-    def _brace_names(value):
-        """ Brace the defined names. """
+    def _brace_names(value, names=config.names):
+        """ Brace names. """
         for name in names:
             value = value.replace(name, '{' + name + '}')
         return value
+
+    @staticmethod
+    def _brace_abbrevs(value):
+        """ Brace abbreviations. """
+        words = re.findall('[a-zA-Z]+', value)
+        # Any word with an uppercase letter not in the first position is a name
+        names = filter(lambda x: any(map(lambda y: y in uppercase, x[1:])),
+                       words)
+        return StringNormaliser._brace_names(value, names)
 
 
 class BibParser:
     """
     Parse the content of a .bib file.
-
     :param content: Content of the .bib file
     """
     def __init__(self, content):
-        entries = purge(content.split('@'))
+        entries = purge_list(content.split('@'))
         self._parsed_entries = []
         for entry in entries:
             self._parsed_entries.append(self._parse_entry(entry))
 
     def _parse_entry(self, entry):
+        """ Parse a single entry. """
         parsed_entry = {}
-        # Last character should be '}', remove it
+        # Last character is always a '}', remove it
         entry = entry[:-2]
-        splitted_entry = purge(entry.split('{', 1))
+        # Extract type
+        splitted_entry = purge_list(entry.split('{', 1))
         parsed_entry['type'] = splitted_entry[0].lower()
-        fields = purge(top_split(splitted_entry[1]))
+        # Extract further fields
+        fields = purge_list(top_split(splitted_entry[1]))
         parsed_entry.update(self._parse_fields(fields))
-        return parsed_entry
+        # Generate field 'id'
+        return self._generate_id(parsed_entry)
+
+    def _generate_id(self, entry):
+        """ Generate the 'id' field for an entry. """
+        # Generate title from first five words
+        filtered_title = filter(lambda x: x in lowercase + uppercase + '_-',
+                                '_'.join(entry['title'].split(' ')[:5]))
+        # Take care of comma notation
+        author = entry['author'][0].split(',')[0]
+        author = author.strip().split(' ')[-1]
+        # Format field 'id'
+        entry['id'] = '{}:{}:{}'.format(author, entry['year'], filtered_title)
+        return entry
 
     def _remove_enclosing(self, value):
+        """ Remove enclosing characters. """
         value = value.strip()
-        if value[0] in ['\'', '"', '{']:
-            return value[1:-2]
+        opening, closing = ['\'', '"', '{'], ['\'', '"', '}']
+        while (value[0], value[-1]) in zip(opening, closing):
+            value = value[1:-1].strip()
         return value
 
     def _parse_fields(self, fields):
-        parsed_entry = {}
-        parsed_entry['id'] = fields[0]
+        """ Parse a list of fields obtained from the BiBTeX source. """
+        parsed_entry = {'id': fields[0]}
         for field in fields[1:]:
-            field = self._remove_enclosing(field)
             splitted_field = field.split('=', 1)
             key = splitted_field[0].strip()
-            value = self._parse_value(key, splitted_field[1].strip())
-            parsed_entry[key] = value
+            if key not in config.allowed_keys:
+                continue
+            unparsed_value = self._remove_enclosing(splitted_field[1])
+            parsed_entry[key] = self._parse_value(key, unparsed_value)
         return parsed_entry
 
     def _parse_value(self, key, value):
+        """ Parse a value according to its key. """
         if is_numeric(value):
             return to_numeric(value)
         elif key == 'pages':
@@ -168,19 +224,27 @@ class BibParser:
             else:
                 return map(int, value.split('-' * num_dashes))
         elif key == 'author':
-            return purge(StringFilter.filter(value).split(' and '))
+            return purge_list(StringNormaliser.filter(value).split(' and '))
         elif key == 'journal' or key == 'booktitle' or key == 'title':
-            return StringFilter.filter(titlecase(value))
+            return titlecase(StringNormaliser.filter(value))
         elif key == 'link':
             return value
         else:
-            return StringFilter.filter(value)
+            return StringNormaliser.filter(value)
 
     def to_json(self):
+        """
+        Convert parsed BiBTeX to JSON.
+        :return: JSON
+        """
         return json.dumps(self._parsed_entries, indent=4, sort_keys=True)
 
 
 class BibRenderer:
+    """
+    Render a BiBTeX file from interpreted JSON source.
+    :param entries: entries in the JSON file
+    """
     _template_entry = textwrap.dedent('''
     @{type:s}{{{id:s},
         {fields:s}
@@ -191,9 +255,14 @@ class BibRenderer:
         self._entries = entries
 
     def as_text(self):
+        """
+        Output BiBTeX source.
+        :return: BiBTeX source
+        """
         return '\n'.join(map(self._entry_to_text, self._entries))
 
     def _entry_to_text(self, entry):
+        """ Convert an entry to text. """
         entry = dict(entry)
         entry_type, entry_id = entry['type'], entry['id']
         del entry['type']
@@ -206,12 +275,13 @@ class BibRenderer:
                                            fields=',\n    '.join(fields))
 
     def _value_to_text(self, key, value):
+        """ Convert a value to text. """
         if type(value) == str or type(value) == unicode:
-            return StringFilter.filter(str(value.encode('ascii', 'ignore')))
+            return StringNormaliser.filter(str(value.encode('ascii', 'ignore')))
         elif type(value) == int:
             return str(value)
         elif key == 'author':
-            return StringFilter.filter(' and '.join(value))
+            return StringNormaliser.filter(' and '.join(value))
         elif key == 'pages':
             return '--'.join(map(str, value))
         else:
