@@ -11,8 +11,3 @@ Resource management with Alfred.
 
 ## Usage
 Type `r<space>` in Alfred.
-
-## To-Do
-- Sphinx documentation.
-- Feature: clean file(s) (arXiv support).
-- TODOs from source.
