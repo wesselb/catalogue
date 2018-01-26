@@ -19,5 +19,6 @@ config = {
                  'subl': '/usr/local/bin/subl',
                  'pbpaste': '/usr/bin/pbpaste',
                  'pbcopy': '/usr/bin/pbcopy',
-                 'trash': '/usr/local/bin/trash'}
+                 'trash': '/usr/local/bin/trash',
+                 'pdfgrep': '/usr/local/bin/pdfgrep'}
 }

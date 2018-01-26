@@ -6,14 +6,14 @@ import argparse
 import json
 import os
 
-import core.bin
+import core.utils
 from config import config
 from core.bibtex import decode
 
 
 def main(args):
     entries = []
-    for entry in core.bin.list(['.json']):
+    for entry in core.utils.list_files(['.json']):
         with open(entry) as f:
             entries.extend(json.load(f))
 

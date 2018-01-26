@@ -5,8 +5,8 @@ from __future__ import absolute_import, division, print_function
 import os
 import subprocess as sp
 
-import core.utils
 from config import config
+from .utils import file_filter
 
 
 def find(path, follow_symlinks=True):
@@ -45,7 +45,7 @@ def mdfind(path, query):
     results = filter(None, out.split('\n'))
 
     # Search for symlinked folders.
-    files = core.utils.file_filter(find(path, follow_symlinks=True), None)
+    files = file_filter(find(path, follow_symlinks=True), None)
     sym_paths = map(os.path.realpath, filter(os.path.islink, files))
 
     # Recurse and return.
@@ -103,23 +103,6 @@ def subl(path):
         path: File to open.
     """
     sp.Popen([config['binaries']['subl'], path]).wait()
-
-
-def list(extensions=None):
-    """
-    List files with certain extensions on `resource_path`.
-
-    Args:
-        extensions: Extensions to list.
-
-    Returns:
-        List of files.
-    """
-    files = find(config['resource_path'])
-    if extensions is None:
-        return files
-    else:
-        return core.utils.file_filter(files, extensions)
 
 
 def trash(path):
