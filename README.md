@@ -1,5 +1,5 @@
 # Catalogue
-Resource management with Alfred
+Resource management with Alfred.
 
 ## Setup
 - Install prerequisite `pip` packages: `pip install titlecase`
@@ -13,6 +13,6 @@ Resource management with Alfred
 Type `r<space>` in Alfred.
 
 ## To-Do
-- Sphinx documentation
-- Feature: rename pdf's automagically
-- Feature: automagically fetch BibTex files
+- Sphinx documentation.
+- Feature: clean file(s) (arXiv support).
+- TODOs from source.

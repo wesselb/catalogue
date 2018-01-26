@@ -1,8 +1,13 @@
-from core.alfred import AlfredFormatter
-from config import config
+# -*- coding: utf-8 -*-
+
+from __future__ import absolute_import, division, print_function
+
 import argparse
-import core.bin as bin
+
+import core.alfred
+import core.bin
 import core.utils
+from config import config
 
 
 def main(args):
@@ -10,17 +15,17 @@ def main(args):
     if args.json:
         extensions = ['.json']
     else:
-        extensions = ['.pdf', '.djvu']
+        extensions = ['.pdf', '.djvu', '.epub']
     if args.content:
-        files = bin.mdfind2(config['resource_path'], query)
-        files = core.utils.filter_ext(files, extensions)
+        files = core.bin.mdfind(config['resource_path'], query)
+        files = core.utils.file_filter(files, extensions)
     else:
-        files = bin.fzf('\n'.join(bin.list(extensions)), query)
-    print AlfredFormatter(files, config['base_path']).list_json()
+        files = core.bin.fzf('\n'.join(core.bin.list(extensions)), query)
+    print(core.alfred.list_json(files, config['base_path']))
 
 
 if __name__ == '__main__':
-    desc = 'Search through names of pdf resources'
+    desc = 'Search through names of pdf resources.'
     parser = argparse.ArgumentParser(prog='find.py', description=desc)
     parser.add_argument('--content', help='instead search content',
                         action='store_true', default=False)

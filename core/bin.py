@@ -1,15 +1,24 @@
-from config import config
-import subprocess as sp
-import core.utils
+# -*- coding: utf-8 -*-
+
+from __future__ import absolute_import, division, print_function
+
 import os
+import subprocess as sp
+
+import core.utils
+from config import config
 
 
 def find(path, follow_symlinks=True):
     """
     List files.
-    :param path: path
-    :param follow_symlinks: boolean whether to follow symlinks
-    :return: list of files
+
+    Args:
+        path: Path.
+        follow_symlinks: Follow symlink.
+
+    Returns:
+        List of files.
     """
     args = [config['binaries']['find']]
     if follow_symlinks:
@@ -22,44 +31,37 @@ def find(path, follow_symlinks=True):
 def mdfind(path, query):
     """
     Search for content.
-    :param path: path
-    :param query: query
-    :return: list of files
+
+    Args:
+        path: Path to search on.
+        query: Query to search for.
+
+    Returns:
+        List of files that match the search query.
     """
+    # Search in path.
     args = [config['binaries']['mdfind'], '-onlyin', path, query]
     out, _ = sp.Popen(args, stdout=sp.PIPE).communicate()
-    return filter(None, out.split('\n'))
+    results = filter(None, out.split('\n'))
 
+    # Search for symlinked folders.
+    files = core.utils.file_filter(find(path, follow_symlinks=True), None)
+    sym_paths = map(os.path.realpath, filter(os.path.islink, files))
 
-def mdfind2(path, query):
-    """
-    Search for content, including symlinks.
-    :param path: path
-    :param query: query
-    :return: list of files
-    """
-    files = core.utils.filter_ext(find(path), ['', '.pdf'])
-    sym_paths = filter(os.path.islink, files)
-    resolved_paths = map(os.path.realpath, sym_paths)
-    # Search symbolic directories and return real directories
-    dirs = filter(os.path.isdir, resolved_paths + [path])
-    results = sum(map(lambda x: mdfind(x, query), set(dirs)), [])
-    # Search symbolic files and return symbolic paths
-    files = filter(lambda x: os.path.isfile(x[1]),
-                   zip(sym_paths, resolved_paths))
-    for sym_file, real_file in files:
-        result = mdfind(os.path.dirname(real_file), query)
-        if real_file in result:
-            results.append(sym_file)
-    return results
+    # Recurse and return.
+    return results + [r for p in sym_paths for r in mdfind(p, query)]
 
 
 def fzf(input, query=None):
     """
-    Search for name.
-    :param input: text input
-    :param query: query
-    :return: list of files
+    Fuzzy search.
+
+    Args:
+        input: Input to search through.
+        query: Query.
+
+    Returns:
+        Fuzzy matches.
     """
     args = [config['binaries']['fzf']]
     if query is not None:
@@ -70,10 +72,23 @@ def fzf(input, query=None):
     return filter(None, out.split('\n'))
 
 
+def pbcopy(x):
+    """
+    Copy text to clipboard.
+
+    Args:
+        x: Text to copy.
+    """
+    sp.Popen([config['binaries']['pbcopy']],
+             stdout=sp.PIPE, stdin=sp.PIPE).communicate(input=x)
+
+
 def pbpaste():
     """
-    Paste from clipboard.
-    :return: clipboard
+    Paste text from clipboard.
+
+    Returns:
+        Text from clipboard.
     """
     out, _ = sp.Popen([config['binaries']['pbpaste']],
                       stdout=sp.PIPE).communicate()
@@ -83,7 +98,9 @@ def pbpaste():
 def subl(path):
     """
     Open Sublime Text.
-    :param path: path
+
+    Args:
+        path: File to open.
     """
     sp.Popen([config['binaries']['subl'], path]).wait()
 
@@ -91,19 +108,25 @@ def subl(path):
 def list(extensions=None):
     """
     List files with certain extensions on `resource_path`.
-    :param extensions: extensions
-    :return: list of files
+
+    Args:
+        extensions: Extensions to list.
+
+    Returns:
+        List of files.
     """
     files = find(config['resource_path'])
     if extensions is None:
         return files
     else:
-        return core.utils.filter_ext(files, extensions)
+        return core.utils.file_filter(files, extensions)
 
 
 def trash(path):
     """
     Move a file to trash.
-    :param path: path
+
+    Args:
+        path: Path.
     """
     sp.Popen([config['binaries']['trash'], path]).wait()

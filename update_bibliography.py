@@ -1,14 +1,19 @@
-import json
-import core.bin as bin
-from core.bib import BibRenderer
-from config import config
+# -*- coding: utf-8 -*-
+
+from __future__ import absolute_import, division, print_function
+
 import argparse
+import json
 import os
+
+import core.bin
+from config import config
+from core.bibtex import decode
 
 
 def main(args):
     entries = []
-    for entry in bin.list(['.json']):
+    for entry in core.bin.list(['.json']):
         with open(entry) as f:
             entries.extend(json.load(f))
 
@@ -17,7 +22,7 @@ def main(args):
         os.mkdir(output_dir)
 
     with open(os.path.join(output_dir, 'bibliography.bib'), 'w') as f:
-        f.write(BibRenderer(entries).as_text())
+        f.write(decode(entries))
 
 
 if __name__ == '__main__':
