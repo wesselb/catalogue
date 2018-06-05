@@ -242,9 +242,18 @@ class AuthorEncoder(Encoder):
 
         # Separate names. This splits off combined names, e.g. "H.-V." becomes
         # "H -V". We'll join them afterwards.
-        authors = [re.split('\.? ?', author) for author in authors]
-        authors = [filter(None, map(lambda x: x.strip(), author))
-                   for author in authors]
+        def separate(author):
+            # First split off combined names.
+            for x in AuthorEncoder.name_combiners:
+                author = author.replace(x, ' ' + x)
+
+            # Split.
+            author = re.split('[. ]', author)
+
+            # Filter and return
+            return filter(None, [x.strip() for x in author])
+
+        authors = [separate(author) for author in authors]
 
         # Add dots to single-letter names.
         authors = [[x + '.' if self._is_single_letter(x) else x for x in author]
