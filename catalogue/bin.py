@@ -25,7 +25,7 @@ def find(path, follow_symlinks=True):
         args += ['-L']
     args += [path]
     out, _ = sp.Popen(args, stdout=sp.PIPE).communicate()
-    return filter(None, out.split('\n'))
+    return filter(None, out.decode().split("\n"))
 
 
 def mdfind(path, query):
@@ -42,7 +42,7 @@ def mdfind(path, query):
     # Search in path.
     args = [config['binaries']['mdfind'], '-onlyin', path, query]
     out, _ = sp.Popen(args, stdout=sp.PIPE).communicate()
-    results = filter(None, out.split('\n'))
+    results = filter(None, out.decode().split('\n'))
 
     # Search for symlinked folders.
     files = file_filter(find(path, follow_symlinks=True), None)
@@ -67,9 +67,9 @@ def fzf(input, query=None):
     if query is not None:
         args += ['-f', query]
     p = sp.Popen(args, stdin=sp.PIPE, stdout=sp.PIPE)
-    p.stdin.write(input)
+    p.stdin.write(input.encode())
     out, _ = p.communicate()
-    return filter(None, out.split('\n'))
+    return filter(None, out.decode().split('\n'))
 
 
 def pbcopy(x):
@@ -92,7 +92,7 @@ def pbpaste():
     """
     out, _ = sp.Popen([config['binaries']['pbpaste']],
                       stdout=sp.PIPE).communicate()
-    return out
+    return out.decode()
 
 
 def subl(path):

@@ -6,7 +6,7 @@ import argparse
 import os
 import re
 
-import core.utils
+import catalogue.utils
 import clean
 
 
@@ -16,7 +16,7 @@ def is_arxiv(path):
 
 
 def main(args):
-    args.files = filter(is_arxiv, core.utils.list_files('.pdf'))
+    args.files = filter(is_arxiv, catalogue.utils.list_files('.pdf'))
     clean.main(args)
 
 

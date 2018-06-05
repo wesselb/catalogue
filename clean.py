@@ -6,7 +6,8 @@ import argparse
 import json
 import os
 
-from core.bibtex import encode, is_arxiv, fetch_arxiv_bibtex, generate_file_name
+from catalogue.bibtex import encode, is_arxiv, fetch_arxiv_bibtex, \
+    generate_file_name
 
 
 def main(args):

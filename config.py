@@ -7,7 +7,7 @@ config = {
     'resource_path': '/Users/Wessel/Dropbox/Resources',
 
     # Path to this repository
-    'catalogue_path': '/Users/Wessel/Dropbox/Projects/Development/Catalogue',
+    'catalogue_path': '/Users/Wessel/Dropbox/Projects/PyLib/Catalogue',
 
     # Prefix to remove from displayed paths
     'base_path': '/Users/Wessel/Dropbox',

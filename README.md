@@ -1,13 +1,7 @@
 # Catalogue
-Resource management with Alfred.
 
-## Setup
-- Install prerequisite `pip` packages: `pip install titlecase`.
-- Install prerequisite `brew` packages: `brew install trash fzf pdfgrep`.
-- Install Sublime Text: `brew cask install sublime-text`.
-- Import `Catalogue.alfredworkflow` into Alfred.
-    - Set environment variables.
-- Configure `config.py`.
+[![Build](https://travis-ci.org/wesselb/catalogue.svg?branch=master)](https://travis-ci.org/wesselb/catalogue)
+[![Coverage Status](https://coveralls.io/repos/github/wesselb/catalogue/badge.svg?branch=master)](https://coveralls.io/github/wesselb/catalogue?branch=master)
+[![Latest Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://catalogue-docs.readthedocs.io/en/latest)
 
-## Usage
-Type `r<space>` in Alfred.
+Resource management in Alfred

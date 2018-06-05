@@ -5,13 +5,13 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import json
 
-import core.bin
-from core.bibtex import encode
-from core.utils import ext_change
+import catalogue.bin
+from catalogue.bibtex import encode
+from catalogue.utils import ext_change
 
 
 def main(args):
-    out = json.dumps(encode(core.bin.pbpaste(), generate_ids=True),
+    out = json.dumps(encode(catalogue.bin.pbpaste(), generate_ids=True),
                      indent=4, sort_keys=True)
     print(out)
     if args.write:
@@ -19,7 +19,7 @@ def main(args):
         with open(json_file, 'w') as f:
             f.write(out)
         if args.edit:
-            core.bin.subl(json_file)
+            catalogue.bin.subl(json_file)
 
 
 if __name__ == '__main__':

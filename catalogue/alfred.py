@@ -19,7 +19,8 @@ def list_json(files, base_path):
     Returns:
         JSON.
     """
-    json_out = {'items': map(_file_to_json_converter(base_path), files)}
+    json_out = {'items': [_file_to_json_converter(base_path)(file)
+                          for file in files]}
     return json.dumps(json_out, indent=4)
 
 

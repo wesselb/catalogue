@@ -1,3 +1,16 @@
+# Byte-compiled file
 *.pyc
+
+# Virtual environments
+venv
+
+# Packaging
+*.egg-info
+
+# Documentation and coverage
+doc/_build
+cover
+
+# Other
 .DS_Store
-output/bibliography.bib
+*.swp

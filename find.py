@@ -4,9 +4,9 @@ from __future__ import absolute_import, division, print_function
 
 import argparse
 
-import core.alfred
-import core.bin
-import core.utils
+import catalogue.alfred
+import catalogue.bin
+import catalogue.utils
 from config import config
 
 
@@ -17,12 +17,12 @@ def main(args):
     else:
         extensions = ['.pdf', '.djvu', '.epub']
     if args.content:
-        files = core.bin.mdfind(config['resource_path'], query)
-        files = core.utils.file_filter(files, extensions)
+        files = catalogue.bin.mdfind(config['resource_path'], query)
+        files = catalogue.utils.file_filter(files, extensions)
     else:
-        files = core.bin.fzf('\n'.join(core.utils.list_files(extensions)),
-                             query)
-    print(core.alfred.list_json(files, config['base_path']))
+        files = catalogue.bin.fzf(
+            '\n'.join(catalogue.utils.list_files(extensions)), query)
+    print(catalogue.alfred.list_json(files, config['base_path']))
 
 
 if __name__ == '__main__':

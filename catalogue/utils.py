@@ -5,7 +5,7 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from config import config
-import core.bin
+import catalogue.bin
 
 
 def ext_change(path, new_extension):
@@ -57,7 +57,7 @@ def list_files(extensions=None):
     Returns:
         List of files.
     """
-    files = core.bin.find(config['resource_path'])
+    files = catalogue.bin.find(config['resource_path'])
     if extensions is None:
         return files
     else:

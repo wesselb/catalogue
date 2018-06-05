@@ -1,0 +1,5 @@
+nose
+coveralls
+titlecase
+bs4
+bibtexparser

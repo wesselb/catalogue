@@ -5,8 +5,8 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import json
 
-import core.bin
-from core.bibtex import decode
+import catalogue.bin
+from catalogue.bibtex import decode
 
 
 def main(args):
@@ -14,7 +14,7 @@ def main(args):
     for entry in args.path:
         with open(entry) as f:
             entries.extend(json.load(f))
-    core.bin.pbcopy(decode(entries))
+    catalogue.bin.pbcopy(decode(entries))
 
 
 if __name__ == '__main__':
