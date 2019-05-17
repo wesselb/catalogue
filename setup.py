@@ -7,8 +7,8 @@ from setuptools import find_packages, setup
 with open('README.md') as f:
     readme = f.read()
 
-with open('LICENSE') as f:
-    license = f.read()
+with open('LICENCE') as f:
+    licence = f.read()
 
 setup(
     name='catalogue',
@@ -16,8 +16,8 @@ setup(
     description='Resource management with Alfred',
     long_description=readme,
     author='Wessel Bruinsma',
-    author_email='skeleton_author_email',
+    author_email='wessel.p.bruinsma@gmail.com',
     url='https://github.com/wesselb/catalogue',
-    license=license,
+    license=licence,
     packages=find_packages(exclude=('tests', 'docs'))
 )
