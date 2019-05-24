@@ -48,7 +48,7 @@ install:
 	pip install -r requirements.txt -e .
 
 test:
-	python -m nose tests --with-coverage --cover-html --cover-package=$(PACKAGE) -v --logging-filter=$(PACKAGE)
+	pytest -v --cov=$(PACKAGE) --cov-report html:cover --cov-report term-missing
 
 clean:
 	rm -rf docs/_build docs/source docs/readme.rst

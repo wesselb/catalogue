@@ -1,5 +1,4 @@
-nose
-coveralls
 titlecase
 bs4
 bibtexparser
+html5lib
