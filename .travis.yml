@@ -1,9 +1,14 @@
 language: python
 python:
   - 3.6
+matrix:
+  include:
+    - python: 3.7
+      dist: xenial
+      sudo: true
 before_install:
   - pip install --upgrade pip
-  - pip install pytest pytest-cov coveralls
+  - pip install --upgrade pytest pytest-cov coveralls
 install:
   - pip install --no-cache-dir -U -r requirements.txt | cat
 script:
