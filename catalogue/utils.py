@@ -1,23 +1,18 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import absolute_import, division, print_function
-
 import os
 
-from config import config
 import catalogue.bin
+from config import config
 
 
 def ext_change(path, new_extension):
-    """
-    Change the extension of a file.
+    """Change the extension of a file.
 
     Args:
-        path: Current path.
-        new_extension: New extension.
+        path (str): Current path.
+        new_extension (str): New extension.
 
     Returns:
-        New path.
+        str: New path.
 
     """
     base, current_extension = os.path.splitext(path)
@@ -27,16 +22,15 @@ def ext_change(path, new_extension):
 
 
 def file_filter(files, extensions):
-    """
-    Filter a list of files according to extensions.
+    """Filter a list of files according to extensions.
 
     Args:
-        files: List of files.
-        extensions: Extension or extensions to filter for. `None` represents
-            a directory.
+        files (list[str]): List of files.
+        extensions (str, list[str], or None): Extension or extensions to filter
+            for. `None` represents a directory.
 
     Returns:
-        Filtered list of files.
+        list[str]: Filtered list of files.
     """
     extensions = extensions if isinstance(extensions, list) else [extensions]
 
@@ -48,14 +42,13 @@ def file_filter(files, extensions):
 
 
 def list_files(extensions=None):
-    """
-    List files with certain extensions on `resource_path`.
+    """List files with certain extensions on `resource_path`.
 
     Args:
-        extensions (optional): Extensions to list.
+        extensions (str, list[str], or None, optional): Extensions to list.
 
     Returns:
-        List of files.
+        list[str]: List of files.
     """
     files = catalogue.bin.find(config['resource_path'])
     if extensions is None:

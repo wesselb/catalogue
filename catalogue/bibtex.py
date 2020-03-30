@@ -1,37 +1,123 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import absolute_import, division, print_function
-
 import abc
 import datetime
 import re
 import unicodedata
 import warnings
-from string import ascii_uppercase as uppercase, ascii_lowercase as lowercase, \
+from string import (
+    ascii_uppercase as uppercase, ascii_lowercase as lowercase,
     digits
+)
 from subprocess import Popen, PIPE
-from urllib.request import urlopen
 
 import bibtexparser as bp
-from bs4 import BeautifulSoup
+import feedparser
+from plum import Dispatcher
 from titlecase import titlecase
 
 from config import config
 
-__all__ = ['is_arxiv', 'fetch_arxiv_bibtex', 'encode', 'decode',
-           'generate_file_name']
+__all__ = ['generate_file_name',
+           'is_arxiv',
+           'fetch_arxiv',
+           'encode',
+           'decode']
+
+_dispatch = Dispatcher()
+
+
+def get_last_name(name):
+    """Get the last name.
+
+    Args:
+        name (str): Full name.
+
+    Returns:
+        str: Last name.
+    """
+    names = name.split(' ')
+    last_name_reversed = [names[-1]]
+
+    # Get all tussenvoegsels.
+    for name in reversed(names[:-1]):
+        # If it starts with a lower letter, then it is a tussenvoegsel.
+        if name[0] == name[0].lower():
+            last_name_reversed.append(name)
+        else:
+            break
+
+    return ' '.join(reversed(last_name_reversed))
+
+
+def generate_file_name(entry):
+    """Generate the file name for an entry.
+
+    Args:
+        entry (dict): Entry.
+
+    Returns:
+        str: File name.
+    """
+    return str_for_file(u'{name}, {year}, {title}'.format(
+        year=entry['year'],
+        name=get_last_name(entry['author'][0]),
+        title=entry['title']
+    ))
+
+
+def generate_id(entry):
+    """Generate an ID for an entry.
+
+    Args:
+        entry (dict): Entry.
+
+    Returns:
+        str: ID.
+    """
+    # Generate the three parts: author, year, and title.
+    first_author = entry['author'][0]
+    author = unicode_to_ascii(first_author.split()[-1])
+    year = str(entry['year'])
+    title_parts = entry['title'].split()[:5]
+    title = unicode_to_ascii('_'.join(title_parts))
+
+    # Filter characters.
+    allowed = uppercase + lowercase + digits + '-_'
+    author = ''.join(filter(lambda x: x in allowed, author))
+    title = ''.join(filter(lambda x: x in allowed, title))
+
+    # Combine the parts into the ID.
+    return '{}:{}:{}'.format(author, year, title)
+
+
+replacements = {
+    u'\xE5': 'a',
+    u'\u212B': 'A'
+}
+
+
+def unicode_to_ascii(x):
+    """Convert a unicode string to ASCII, cleverly replacing characters.
+
+    Args:
+        x (str): Unicode string.
+
+    Returns:
+        str: `x` as ASCII.
+    """
+    for key, value in replacements.items():
+        x = x.replace(key, value)
+    return x.encode('ascii', 'ignore').decode()
 
 
 def is_arxiv(fp):
-    """
-    Check whether a PDF is from arXiv.
+    """Check whether a PDF is from arXiv.
 
     Args:
-        fp: File path.
+        fp (str): File path.
 
     Returns:
-        `None` if the PDF is not from arXiv and the detected arXiv identifier
-        otherwise.
+        tuple[str, str]: The detected arXiv category and identifier if
+            the PDF if from arXiv and `None` otherwise.
 
     """
     # Attempt to extract the arXiv number via `pdfgrep`.
@@ -47,39 +133,8 @@ def is_arxiv(fp):
     return None
 
 
-def fetch_arxiv_bibtex(fp, info=None):
-    """
-    Fetch the BiBTeX for an arXiv PDF.
-
-    Args:
-        fp: Path.
-        info (optional): arXiv info from :method:`.bibtex.is_arxiv`.
-
-    Returns:
-        The BiBTeX if it can be found and `None` otherwise.
-    """
-    info = info if info else is_arxiv(fp)
-
-    if info:
-        cat, num = info
-
-        # Successful. Now fetch the BiBTeX.
-        page = urlopen('http://adsabs.harvard.edu/cgi-bin/bib_query?'
-                       'arXiv:{}{}'.format(cat + '/' if cat else '',
-                                           num)).read()
-        soup = BeautifulSoup(page, 'html5lib')
-        el = soup.find('a', text='Bibtex entry for this abstract', href=True)
-        href = urlopen(el['href']).read().decode()
-
-        # Skip until the first '@', which should mark the beginning of the
-        # BiBTeX.
-        return '@' + '@'.join(href.split('@')[1:])
-    return None
-
-
 def str_for_file(xs):
-    """
-    Convert a string such that it can be used in a filename.
+    """Convert a string such that it can be used in a filename.
 
     Args:
         xs: String to convert.
@@ -88,18 +143,55 @@ def str_for_file(xs):
         String usable for file name.
     """
     # Encode to ASCII.
-    xs = xs.encode('ascii', 'ignore').decode()
+    xs = unicode_to_ascii(xs)
 
     # Convert characters.
     convert = {':': ',',
                ';': ','}
     for char_from, char_to in convert.items():
-        print(xs, char_from, char_to)
         xs = xs.replace(char_from, char_to)
 
     # Finally, whitelist characters.
     allowed = uppercase + lowercase + digits + '- !()-_=+\'",.'
     return ''.join(filter(lambda x: x in allowed, xs))
+
+
+def fetch_arxiv(fp, info=None):
+    """Fetch the BiBTeX for an arXiv PDF.
+
+    Args:
+        fp: Path.
+        info (optional): arXiv info from :method:`.bibtex.is_arxiv`.
+
+    Returns:
+        list[dict]: The BiBTeX if it can be found and `None` otherwise.
+    """
+    info = info if info else is_arxiv(fp)
+
+    if info:
+        cat, num = info
+        feed = feedparser.parse(f'https://export.arxiv.org/api/query'
+                                f'?search_query=all:{num}')
+
+        # Check that results is not ambiguous.
+        num_results = len(feed['entries'])
+        if num_results != 1:
+            raise RuntimeError(f'Query not unambiguous: found {num_results} '
+                               f'results.')
+
+        # Construct raw content of entry.
+        entry = feed['entries'][0]
+        year, month = map(int, entry['published'].split('-')[:2])
+        entry = {'type': 'article',
+                 'title': entry['title'],
+                 'author': ' and '.join([x['name'] for x in entry['authors']]),
+                 'year': year,
+                 'month': month,
+                 'eprint': num,
+                 'journal': 'arXiv E-Prints'}
+        return [entry]
+    else:
+        return None
 
 
 class Encoder(object):
@@ -174,12 +266,17 @@ class StringEncoder(Encoder):
                    '^': u'\u0302',
                    '~': u'\u0303',
                    '`': u'\u0300',
-                   '"': u'\u0308'}
+                   '"': u'\u0308',
+                   'v': u'\u030c',
+                   'r': u'\u030A',
+                   'c': u'\u0327',
+                   'k': u'\u0328'}
     mod_map = {v: k for k, v in tex_mod_map.items()}
     tex_commands = {'O': u'\xD8',
-                    'o': u'\xF8'}
+                    'o': u'\xF8',
+                    'aa': u'\xE5',
+                    'AA': u'\u212B'}
     commands = {v: k for k, v in tex_commands.items()}
-    ensure_braces = ['Gaussian', 'GP']
 
     def encode(self, obj):
         # Convert hard-coded LaTeX spaces to normal ones. BiBTeX should be able
@@ -187,26 +284,33 @@ class StringEncoder(Encoder):
         obj = re.sub(r'([^\\])~', r'\1 ', obj)
         obj = re.sub(r'^~', ' ', obj)
 
+        # Replace LaTeX commands.
+        for command, result in StringEncoder.tex_commands.items():
+            obj = re.sub(r'\\' + command + r'([^a-zA-Z])', result + r'\1', obj)
+            obj = re.sub(r'\\' + command + r'$', result, obj)
+
         # Convert LaTeX-coded special character to their unicode variants.
         it = Peekable(obj)
         out = u''
         for x in it:
-            if x == '{':
-                if re.match(r'^\\[^a-zA-Z][a-zA-Z]\}$', it.peek(4)):
-                    modifier = it.peek(start=1)
-                    letter = it.peek(start=2)
+            if x == '\\':
+                res = re.match(r'^(.) *\{?([a-zA-Z])\}?', it.peek(10))
+                if res:
+                    # Get the letters and modifier.
+                    modifier = res.groups()[0]
+                    letter = res.groups()[1]
+
                     if modifier not in StringEncoder.tex_mod_map:
                         raise RuntimeError('StringEncoder: cannot map '
                                            'modifier "{}".'.format(modifier))
-                    it.skip(4)
+
+                    # Skip.
+                    it.skip(res.span()[1])
+
                     out += letter + StringEncoder.tex_mod_map[modifier]
                     continue
-            out += x
 
-        # Replace other LaTeX commands.
-        for command, result in StringEncoder.tex_commands.items():
-            out = re.sub(r'\\' + command + r'([^a-zA-Z])', result + r'\1', out)
-            out = re.sub(r'\\' + command + r'$', result, out)
+            out += x
 
         # Finally, remove any LaTeX braces.
         out = out.replace('{', '').replace('}', '')
@@ -221,7 +325,7 @@ class StringEncoder(Encoder):
             elif x in StringEncoder.mod_map:
                 letter = out[-1]
                 modifier = StringEncoder.mod_map[x]
-                out = out[:-1] + '{{\\{}{}}}'.format(modifier, letter)
+                out = out[:-1] + '{{\\{} {}}}'.format(modifier, letter)
             elif x in StringEncoder.commands:
                 out += '{{\\{}}}'.format(StringEncoder.commands[x])
             else:
@@ -283,6 +387,26 @@ class AuthorEncoder(Encoder):
 
 
 class TitleEncoder(Encoder):
+    _protected = ['Gauss',
+                  'GP',
+                  'Mahalanobis',
+                  'Fokker',
+                  'Planck',
+                  'Langevin',
+                  'Bayes',
+                  'Wasserstein',
+                  'Volterra',
+                  'Newton',
+                  'Stein',
+                  'Kronecker',
+                  'PAC',
+                  'PDE',
+                  'ODE',
+                  'VampPrior',
+                  'Canadian',
+                  'Kalman',
+                  'Cholesky']
+
     def encode(self, xs):
         def callback(x, all_caps):
             # This callback enforces uppercase words to remain uppercase.
@@ -292,12 +416,20 @@ class TitleEncoder(Encoder):
         return titlecase(xs, callback=callback)
 
     def decode(self, obj, entry):
-        return obj
+        def process(word):
+            protected = any([word.startswith(x)
+                             for x in TitleEncoder._protected])
+            if word == word.upper() or protected:
+                return '{' + word + '}'
+            else:
+                return word
+
+        return ' '.join(map(process, obj.split(' ')))
 
 
 class IntEncoder(Encoder):
     def encode(self, obj):
-        # TODO: handle long forms
+        # TODO: Handle long forms.
         return int(obj)
 
     def decode(self, obj, entry):
@@ -306,13 +438,17 @@ class IntEncoder(Encoder):
 
 class PagesEncoder(Encoder):
     def encode(self, obj):
+        # First strip spaces.
+        obj = obj.replace(' ', '')
+
+        # Then match.
         res_double = re.match(r'^([0-9]+)\-+([0-9]+)$', obj)
         res_single = re.match(r'^([0-9]+)$', obj)
         if res_double:
-            return map(int, res_double.groups())
+            return [int(x) for x in res_double.groups()]
         elif res_single:
             warnings.warn('Pages encoded by a single digit.')
-            return map(int, res_single.groups())
+            return [int(x) for x in res_single.groups()]
         else:
             raise RuntimeError('Could not parse pages "{}".'.format(obj))
 
@@ -326,25 +462,28 @@ class PagesEncoder(Encoder):
 
 
 class MonthEncoder(Encoder):
-    specs = [[datetime.date(2008, i, 1).strftime('%B') for i in range(1, 13)],
-             [datetime.date(2008, i, 1).strftime('%b') for i in range(1, 13)],
-             range(1, 13)]
+    specs = [range(1, 13),
+             [datetime.date(2008, i, 1).strftime('%B') for i in range(1, 13)],
+             [datetime.date(2008, i, 1).strftime('%b') for i in range(1, 13)]]
 
     def encode(self, obj):
+        return MonthEncoder.specs[0][self._match(obj)]
+
+    def decode(self, obj, entry):
+        return MonthEncoder.specs[0][self._match(obj)]
+
+    def _match(self, obj):
         for spec in MonthEncoder.specs:
             # Test for exact hits.
             hits = [str(month).lower() == str(obj).lower() for month in spec]
             if sum(hits) == 1:
-                return MonthEncoder.specs[0][hits.index(True)]
+                return hits.index(True)
 
             # Test for contained hits.
             hits = [str(month).lower() in str(obj).lower() for month in spec]
             if sum(hits) == 1:
-                return MonthEncoder.specs[0][hits.index(True)]
-        raise RuntimeError('Could not decode month "{}".'.format(obj))
-
-    def decode(self, obj, entry):
-        return obj
+                return hits.index(True)
+        raise RuntimeError('Could not match month "{}".'.format(obj))
 
 
 class ArXivEPrintEncoder(Encoder):
@@ -374,6 +513,19 @@ class ArXivFilter(Encoder):
             return obj
 
 
+class DOIEncoder(Encoder):
+    def encode(self, obj):
+        res = re.match(r'^(https?://)?(www\.)?(doi\.org/)?(.*)$',
+                       obj, flags=re.IGNORECASE)
+        if res:
+            return res.groups()[-1]
+        else:
+            raise RuntimeError('Could not decode DOI "{}".'.format(obj))
+
+    def decode(self, obj, entry):
+        return obj
+
+
 title_encoder = TitleEncoder().compose(StringEncoder())
 author_encoder = AuthorEncoder().compose(StringEncoder())
 encoders = {'author': author_encoder,
@@ -382,9 +534,12 @@ encoders = {'author': author_encoder,
             'month': MonthEncoder(),
             'title': title_encoder,
             'booktitle': ArXivFilter().compose(title_encoder),
+            'booksubtitle': title_encoder,
+            'maintitle': title_encoder,
             'journal': ArXivFilter().compose(title_encoder),
             'publisher': StringEncoder(),
             'school': StringEncoder(),
+            'institution': StringEncoder(),
             'pages': PagesEncoder(),
             'volume': IntEncoder(),
             'number': IntEncoder(),
@@ -393,83 +548,90 @@ encoders = {'author': author_encoder,
             'chapter': IntEncoder(),
             'eprint': ArXivEPrintEncoder(),
             'url': IdentityEncoder(),
-            'doi': IdentityEncoder()}
+            'pdf': IdentityEncoder(),
+            'note': IdentityEncoder(),
+            'urldate': IdentityEncoder(),
+            'doi': DOIEncoder(),
+            'issn': IdentityEncoder(),
+            'crossref': IdentityEncoder()}
 
 
+@_dispatch(list)
 def encode(xs, generate_ids=False):
-    """
-    Encode a string containing BiBTeX entries, or re-encode previously
-    encoded entries.
+    """Encode a string containing BiBTeX entries, a list of dictionaries which
+    represent the parsed BiBTeX, or a list of encoded entries with a raw
+    dictionary representation available.
 
     TODO: Handle bug in BP: ensure comma after final field.
 
     Args:
-        xs: String containing BiBTeX entries.
+        xs (str or list): BiBTeX entries.
         generate_ids (bool, optional): Overwrite the IDs.
 
     Returns:
         BiBTeX entries represented as a dictionaries.
     """
-    # Parse entries and determine their IDs.
-    if isinstance(xs, str):
-        parser = bp.bparser.BibTexParser(common_strings=True,
-                                         homogenize_fields=True)
-        parsed_entries = bp.loads(xs, parser).entries
-        parsed_ids = [x['ID'] for x in parsed_entries]
-    elif isinstance(xs, list):
-        parsed_entries = [x['raw'] for x in xs]
-        # Preserve previously generated IDs.
-        parsed_ids = [x['wID'] for x in xs]
-    else:
-        raise ValueError('Unknown type "{}" for input.'.format(type(xs)))
+    # Extract raw where possible.
+    parsed_entries = [x['raw'] if 'raw' in x else x for x in xs]
 
-    # Standardise keys in parsed entries.
-    parsed_entries = [{k.encode('ascii').decode(): v
-                       for k, v in entry.items()}
-                      for entry in parsed_entries]
+    # Encode the entries, skipping those where the decoding fails.
+    encoded_entries = []
+    for entry in parsed_entries:
+        encoded_entry = {}
+        for k, v in entry.items():
+            if k in encoders:
+                try:
+                    encoded_entry[k] = encoders[k].encode(v)
+                except RuntimeError:
+                    # Could not encode entry. Skip it.
+                    continue
+        encoded_entries.append(encoded_entry)
 
-    # Encode the entries.
-    entries = [{k: encoders[k].encode(v)
-                for k, v in entry.items() if k in encoders}
-               for entry in parsed_entries]
-
-    # Process special properties.
-    for entry, parsed_entry, parsed_id in zip(entries, parsed_entries,
-                                              parsed_ids):
-        entry['type'] = parsed_entry['ENTRYTYPE']
-        entry['id'] = parsed_id
-        entry['raw'] = parsed_entry
+    # Process special fields.
+    for encoded_entry, parsed_entry in zip(encoded_entries, parsed_entries):
+        print(parsed_entry)
+        encoded_entry['type'] = parsed_entry['type'].lower()
+        encoded_entry['raw'] = parsed_entry
 
         # Generate an ID for the entry if required.
         if generate_ids:
-            # Generate the three parts: author, year, and title.
-            first_author = entry['author'][0]
-            author = first_author.split()[-1].encode('ascii', 'ignore').decode()
-            year = str(entry['year'])
-            title_parts = entry['title'].split()[:5]
-            title = '_'.join(title_parts).encode('ascii', 'ignore').decode()
+            encoded_entry['id'] = generate_id(encoded_entry)
 
-            # Filter characters.
-            allowed = uppercase + lowercase + digits + '-_'
-            author = ''.join(filter(lambda x: x in allowed, author))
-            title = ''.join(filter(lambda x: x in allowed, title))
+    return encoded_entries
 
-            # Combine the parts into the ID.
-            entry['id'] = '{}:{}:{}'.format(author, year, title)
 
-    return entries
+@_dispatch(str)
+def encode(xs, generate_ids=False):
+    parser = bp.bparser.BibTexParser(common_strings=True,
+                                     homogenize_fields=True)
+    entries = bp.loads(xs, parser).entries
+
+    # Standardise keys in parsed entries.
+    entries = [{k.encode('ascii').decode().lower(): v
+                for k, v in entry.items()}
+               for entry in entries]
+
+    # Fix up entries.
+    for entry in entries:
+        # Rename `entrytype` to `type`.
+        entry['type'] = entry['entrytype']
+        del entry['entrytype']
+
+    return encode(entries, generate_ids=generate_ids)
 
 
 def decode(obj):
-    """
-    Decode an encoded BiBTeX string.
+    """Decode an encoded BiBTeX string.
 
     Args:
-        obj: Encoding.
+        obj (object): Encoding.
 
     Returns:
-        BiBTeX string.
+        str: BiBTeX string.
     """
+    # Move crossreferences to end.
+    obj = [entry for entry in obj if entry['type'].lower() != 'proceedings'] + \
+          [entry for entry in obj if entry['type'].lower() == 'proceedings']
 
     # Decode the entries.
     decoded_entries = []
@@ -482,55 +644,32 @@ def decode(obj):
                 # Only add the result if is it not `None`.
                 if res is not None:
                     entry[k] = res
+
+        # Check whether `crossref` in included, but `type` isn't appropriate.
+        if 'crossref' in entry and \
+                not decoded_entry['type'].lower().startswith('in'):
+            warnings.warn('For ID "{}" with title "{}", a cross-reference is '
+                          'used, but the type is "{}".'
+                          ''.format(decoded_entry['id'],
+                                    entry['title'],
+                                    decoded_entry['type']))
+
         decoded_entries.append(entry)
 
-    out = ''
-    for decoded_entry, enty in zip(decoded_entries, obj):
+    # Convert to text, minding duplicate entries.
+    out, processed_ids = '', []
+    for decoded_entry, entry in zip(decoded_entries, obj):
+        # Check whether the entry has already been converted to text.
+        if entry['id'].lower() in processed_ids:
+            continue
+        else:
+            processed_ids.append(entry['id'].lower())
+
+        # Convert to text.
         content = '\n'.join(['    {key} = {{{value}}},'.format(key=k, value=v)
                              for k, v in decoded_entry.items()])
         out += '@{type}{{{id},\n{content}\n}}\n\n' \
-               ''.format(type=enty['type'],
-                         id=enty['id'],
+               ''.format(type=entry['type'],
+                         id=entry['id'],
                          content=content)
     return out
-
-
-def get_last_name(name):
-    """
-    Get the last name.
-
-    Args:
-        name: Full name.
-
-    Returns:
-        Last name.
-    """
-    names = name.split(' ')
-    last_name_reversed = [names[-1]]
-
-    # Get all tussenvoegsels.
-    for name in reversed(names[:-1]):
-        # If it starts with a lower letter, then it is a tussenvoegsel.
-        if name[0] == name[0].lower():
-            last_name_reversed.append(name)
-        else:
-            break
-
-    return ' '.join(reversed(last_name_reversed))
-
-
-def generate_file_name(entry):
-    """
-    Generate the file name for an entry.
-
-    Args:
-        entry: Entry.
-
-    Returns:
-        File name.
-    """
-    return str_for_file(u'{name}, {year}, {title}'.format(
-        year=entry['year'],
-        name=get_last_name(entry['author'][0]),
-        title=entry['title']
-    ))

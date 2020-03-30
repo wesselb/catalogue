@@ -1,23 +1,18 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import absolute_import, division, print_function
-
-import os
 import json
+import os
 
 __all__ = ['list_json']
 
 
 def list_json(files, base_path):
-    """
-    List the files in Alfred's JSON format.
+    """List the files in Alfred's JSON format.
 
     Args:
-        files: Files to list.
-        base_path: Base path of the files.
+        files (list[str]): Files to list.
+        base_path (str): Base path of the files.
 
     Returns:
-        JSON.
+        str: JSON.
     """
     json_out = {'items': [_file_to_json_converter(base_path)(file)
                           for file in files]}
@@ -25,15 +20,14 @@ def list_json(files, base_path):
 
 
 def _trim_path(file_path, base_path):
-    """
-    Trim a path by removing a prefix.
+    """Trim a path by removing a prefix.
 
     Args:
-        file_path: Path.
-        base_path: Prefix to remove.
+        file_path (str): Path.
+        base_path (str): Prefix to remove.
 
     Returns:
-        Trimmed path.
+        str: Trimmed path.
     """
     if file_path.startswith(base_path):
         return file_path[len(base_path):]
@@ -41,15 +35,14 @@ def _trim_path(file_path, base_path):
 
 
 def _file_to_json_converter(base_path):
-    """
-    Generate a function that converters file paths to JSON, stripping a base
+    """Generate a function that converters file paths to JSON, stripping a base
     path.
 
     Args:
-        base_path: Base path.
+        base_path (str): Base path.
 
     Returns:
-        Function that converts file paths to JSON.
+        function: Function that converts file paths to JSON.
     """
 
     def converter(file_path):

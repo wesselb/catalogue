@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import absolute_import, division, print_function
-
 import os
 import subprocess as sp
 
@@ -10,15 +6,14 @@ from .utils import file_filter
 
 
 def find(path, follow_symlinks=True):
-    """
-    List files.
+    """List files.
 
     Args:
-        path: Path.
-        follow_symlinks: Follow symlink.
+        path (str): Path.
+        follow_symlinks (bool): Follow symlink.
 
     Returns:
-        List of files.
+        list[str]: List of files.
     """
     args = [config['binaries']['find']]
     if follow_symlinks:
@@ -29,15 +24,14 @@ def find(path, follow_symlinks=True):
 
 
 def mdfind(path, query):
-    """
-    Search for content.
+    """Search for content.
 
     Args:
-        path: Path to search on.
-        query: Query to search for.
+        path (str): Path to search on.
+        query (str): Query to search for.
 
     Returns:
-        List of files that match the search query.
+        list[str]: List of files that match the search query.
     """
     # Search in path.
     args = [config['binaries']['mdfind'], '-onlyin', path, query]
@@ -53,15 +47,14 @@ def mdfind(path, query):
 
 
 def fzf(input, query=None):
-    """
-    Fuzzy search.
+    """Fuzzy search.
 
     Args:
-        input: Input to search through.
-        query: Query.
+        input (str): Input to search through.
+        query (str): Query.
 
     Returns:
-        Fuzzy matches.
+        list[str]: Fuzzy matches.
     """
     args = [config['binaries']['fzf']]
     if query is not None:
@@ -73,22 +66,20 @@ def fzf(input, query=None):
 
 
 def pbcopy(x):
-    """
-    Copy text to clipboard.
+    """Copy text to clipboard.
 
     Args:
-        x: Text to copy.
+        x (str): Text to copy.
     """
     sp.Popen([config['binaries']['pbcopy']],
-             stdout=sp.PIPE, stdin=sp.PIPE).communicate(input=x)
+             stdout=sp.PIPE, stdin=sp.PIPE).communicate(input=x.encode())
 
 
 def pbpaste():
-    """
-    Paste text from clipboard.
+    """Paste text from clipboard.
 
     Returns:
-        Text from clipboard.
+        str:Text from clipboard.
     """
     out, _ = sp.Popen([config['binaries']['pbpaste']],
                       stdout=sp.PIPE).communicate()
@@ -96,20 +87,18 @@ def pbpaste():
 
 
 def subl(path):
-    """
-    Open Sublime Text.
+    """Open Sublime Text.
 
     Args:
-        path: File to open.
+        path (str): File to open.
     """
     sp.Popen([config['binaries']['subl'], path]).wait()
 
 
 def trash(path):
-    """
-    Move a file to trash.
+    """Move a file to trash.
 
     Args:
-        path: Path.
+        path (str): Path.
     """
     sp.Popen([config['binaries']['trash'], path]).wait()

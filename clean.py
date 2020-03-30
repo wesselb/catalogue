@@ -1,13 +1,13 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import absolute_import, division, print_function
-
 import argparse
 import json
 import os
 
-from catalogue.bibtex import encode, is_arxiv, fetch_arxiv_bibtex, \
+from catalogue.bibtex import (
+    encode,
+    is_arxiv,
+    fetch_arxiv,
     generate_file_name
+)
 
 
 def main(args):
@@ -34,9 +34,8 @@ def main(args):
         # Check whether the PDF is from arXiv. If so, fetch and update BiBTeX.
         info = is_arxiv(path_pdf)
         if info:
-            # Only generate an ID if there is no JSON.
-            arxiv_bibtex = encode(fetch_arxiv_bibtex(path_pdf, info),
-                                  generate_ids=not has_json)
+            arxiv_bibtex = encode(fetch_arxiv(path_pdf, info),
+                                  generate_ids=True)
 
             # If BiBTeX exists, preserve key, but overwrite BiBTeX.
             if has_json:
