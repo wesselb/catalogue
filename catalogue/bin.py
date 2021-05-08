@@ -15,9 +15,9 @@ def find(path, follow_symlinks=True):
     Returns:
         list[str]: List of files.
     """
-    args = [config['binaries']['find']]
+    args = [config["binaries"]["find"]]
     if follow_symlinks:
-        args += ['-L']
+        args += ["-L"]
     args += [path]
     out, _ = sp.Popen(args, stdout=sp.PIPE).communicate()
     return filter(None, out.decode().split("\n"))
@@ -34,9 +34,9 @@ def mdfind(path, query):
         list[str]: List of files that match the search query.
     """
     # Search in path.
-    args = [config['binaries']['mdfind'], '-onlyin', path, query]
+    args = [config["binaries"]["mdfind"], "-onlyin", path, query]
     out, _ = sp.Popen(args, stdout=sp.PIPE).communicate()
-    results = filter(None, out.decode().split('\n'))
+    results = filter(None, out.decode().split("\n"))
 
     # Search for symlinked folders.
     files = file_filter(find(path, follow_symlinks=True), None)
@@ -56,13 +56,13 @@ def fzf(input, query=None):
     Returns:
         list[str]: Fuzzy matches.
     """
-    args = [config['binaries']['fzf']]
+    args = [config["binaries"]["fzf"]]
     if query is not None:
-        args += ['-f', query]
+        args += ["-f", query]
     p = sp.Popen(args, stdin=sp.PIPE, stdout=sp.PIPE)
     p.stdin.write(input.encode())
     out, _ = p.communicate()
-    return filter(None, out.decode().split('\n'))
+    return filter(None, out.decode().split("\n"))
 
 
 def pbcopy(x):
@@ -71,8 +71,9 @@ def pbcopy(x):
     Args:
         x (str): Text to copy.
     """
-    sp.Popen([config['binaries']['pbcopy']],
-             stdout=sp.PIPE, stdin=sp.PIPE).communicate(input=x.encode())
+    sp.Popen([config["binaries"]["pbcopy"]], stdout=sp.PIPE, stdin=sp.PIPE).communicate(
+        input=x.encode()
+    )
 
 
 def pbpaste():
@@ -81,8 +82,7 @@ def pbpaste():
     Returns:
         str:Text from clipboard.
     """
-    out, _ = sp.Popen([config['binaries']['pbpaste']],
-                      stdout=sp.PIPE).communicate()
+    out, _ = sp.Popen([config["binaries"]["pbpaste"]], stdout=sp.PIPE).communicate()
     return out.decode()
 
 
@@ -92,7 +92,7 @@ def subl(path):
     Args:
         path (str): File to open.
     """
-    sp.Popen([config['binaries']['subl'], path]).wait()
+    sp.Popen([config["binaries"]["subl"], path]).wait()
 
 
 def trash(path):
@@ -101,4 +101,4 @@ def trash(path):
     Args:
         path (str): Path.
     """
-    sp.Popen([config['binaries']['trash'], path]).wait()
+    sp.Popen([config["binaries"]["trash"], path]).wait()

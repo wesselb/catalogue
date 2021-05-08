@@ -1,7 +1,7 @@
 import json
 import os
 
-__all__ = ['list_json']
+__all__ = ["list_json"]
 
 
 def list_json(files, base_path):
@@ -14,8 +14,7 @@ def list_json(files, base_path):
     Returns:
         str: JSON.
     """
-    json_out = {'items': [_file_to_json_converter(base_path)(file)
-                          for file in files]}
+    json_out = {"items": [_file_to_json_converter(base_path)(file) for file in files]}
     return json.dumps(json_out, indent=4)
 
 
@@ -30,7 +29,7 @@ def _trim_path(file_path, base_path):
         str: Trimmed path.
     """
     if file_path.startswith(base_path):
-        return file_path[len(base_path):]
+        return file_path[len(base_path) :]
     return file_path
 
 
@@ -49,12 +48,13 @@ def _file_to_json_converter(base_path):
         _, extension = os.path.splitext(file_path)
         # If 'uid' is specified, then and only then will Alfred order the
         # entries
-        return {'type': 'file',
-                'title': os.path.basename(file_path),
-                'subtitle': _trim_path(file_path, base_path),
-                'quicklookurl': file_path,
-                'arg': file_path,
-                'icon': {'type': 'fileicon',
-                         'path': file_path}}
+        return {
+            "type": "file",
+            "title": os.path.basename(file_path),
+            "subtitle": _trim_path(file_path, base_path),
+            "quicklookurl": file_path,
+            "arg": file_path,
+            "icon": {"type": "fileicon", "path": file_path},
+        }
 
     return converter

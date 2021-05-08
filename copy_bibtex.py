@@ -13,7 +13,7 @@ def main(args):
     catalogue.bin.pbcopy(decode(entries))
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(prog='copy_bibtex.py')
-    parser.add_argument('path', help='JSON', nargs='+')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog="copy_bibtex.py")
+    parser.add_argument("path", help="JSON", nargs="+")
     main(parser.parse_args())

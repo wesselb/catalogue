@@ -16,8 +16,8 @@ def ext_change(path, new_extension):
 
     """
     base, current_extension = os.path.splitext(path)
-    if not new_extension.startswith('.'):
-        new_extension = '.' + new_extension
+    if not new_extension.startswith("."):
+        new_extension = "." + new_extension
     return base + new_extension
 
 
@@ -50,7 +50,7 @@ def list_files(extensions=None):
     Returns:
         list[str]: List of files.
     """
-    files = catalogue.bin.find(config['resource_path'])
+    files = catalogue.bin.find(config["resource_path"])
     if extensions is None:
         return files
     else:

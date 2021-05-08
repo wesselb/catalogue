@@ -2,12 +2,7 @@ import argparse
 import json
 import os
 
-from catalogue.bibtex import (
-    encode,
-    is_arxiv,
-    fetch_arxiv,
-    generate_file_name
-)
+from catalogue.bibtex import encode, is_arxiv, fetch_arxiv, generate_file_name
 
 
 def main(args):
@@ -15,13 +10,13 @@ def main(args):
         # Verify path.
         if not os.path.isfile(path_pdf):
             print('"{}" is not a file.'.format(path_pdf))
-        if not os.path.splitext(path_pdf)[1] == '.pdf':
+        if not os.path.splitext(path_pdf)[1] == ".pdf":
             print('"{}" is not a PDF.'.format(path_pdf))
 
         # Parse path and determine whether a JSON exists.
         name, _ = os.path.splitext(os.path.basename(path_pdf))
         base = os.path.dirname(path_pdf)
-        path_json = os.path.join(base, name + '.json')
+        path_json = os.path.join(base, name + ".json")
         has_json = os.path.isfile(path_json)
 
         # If JSON is available, load it.
@@ -34,12 +29,11 @@ def main(args):
         # Check whether the PDF is from arXiv. If so, fetch and update BiBTeX.
         info = is_arxiv(path_pdf)
         if info:
-            arxiv_bibtex = encode(fetch_arxiv(path_pdf, info),
-                                  generate_ids=True)
+            arxiv_bibtex = encode(fetch_arxiv(path_pdf, info), generate_ids=True)
 
             # If BiBTeX exists, preserve key, but overwrite BiBTeX.
             if has_json:
-                arxiv_bibtex[0]['id'] = bibtex[0]['id']
+                arxiv_bibtex[0]["id"] = bibtex[0]["id"]
 
             # Overwrite BiBTeX.
             bibtex = arxiv_bibtex
@@ -47,8 +41,8 @@ def main(args):
         # Determine new paths paths.
         if bibtex:
             name = generate_file_name(bibtex[0])
-            new_path_pdf = os.path.join(base, name + '.pdf')
-            new_path_json = os.path.join(base, name + '.json')
+            new_path_pdf = os.path.join(base, name + ".pdf")
+            new_path_json = os.path.join(base, name + ".json")
         else:
             new_path_pdf = path_pdf
             new_path_json = path_json
@@ -58,13 +52,14 @@ def main(args):
         if has_json:
             os.unlink(path_json)
         if bibtex:
-            with open(new_path_json, 'w') as f:
+            with open(new_path_json, "w") as f:
                 json.dump(bibtex, f, sort_keys=True, indent=4)
 
 
-if __name__ == '__main__':
-    desc = 'Clean PDFs: re-encode BiBTeX, checking arXiv, and rename.'
-    parser = argparse.ArgumentParser(prog='clean.py', description=desc)
-    parser.add_argument('files', type=str, help='files',
-                        action='store', default=False, nargs='+')
+if __name__ == "__main__":
+    desc = "Clean PDFs: re-encode BiBTeX, checking arXiv, and rename."
+    parser = argparse.ArgumentParser(prog="clean.py", description=desc)
+    parser.add_argument(
+        "files", type=str, help="files", action="store", default=False, nargs="+"
+    )
     main(parser.parse_args())
